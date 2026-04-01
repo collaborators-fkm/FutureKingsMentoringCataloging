@@ -246,8 +246,8 @@ def main():
     SITE_ID = get_site_id(SITE_HOSTNAME, SITE_PATH, headers)
     LIBRARY_DRIVE_ID = get_drive_id(SITE_ID, os.getenv("DRIVE_NAME"), headers)
 
-    # pptx_files = get_all_pptx_files(LIBRARY_DRIVE_ID, headers)
-    pptx_files = [
+    # raw_pptx_files = get_all_pptx_files(LIBRARY_DRIVE_ID, headers)
+    raw_pptx_files = [
         get_file(LIBRARY_DRIVE_ID, item_id, headers)
         for item_id in [
             "01I7HKCO3RVKMEHQRDR5GZJS6QR56L6LCY",
@@ -259,20 +259,21 @@ def main():
         ]
     ]
 
-    raw_pptx_slide_data = [
+    base_pptx_slide_data = [
         {
             "id": pptx_file["id"],
             "name": pptx_file["name"],
+            "web_url": pptx_file["webUrl"],
             "slide_texts": extract_slide_text_from_pptx_bytes(
                 download_pptx_file_content(LIBRARY_DRIVE_ID, pptx_file["id"], headers)
             ),
             "last_modified": pptx_file["lastModifiedDateTime"],
         }
-        for pptx_file in pptx_files
+        for pptx_file in raw_pptx_files
     ]
 
     final_pptx_objects = []
-    for pptx_file in raw_pptx_slide_data:
+    for pptx_file in base_pptx_slide_data:
         number_of_slides = len(pptx_file["slide_texts"])
         average_words_per_slide = (
             sum(len(slide.split()) for slide in pptx_file["slide_texts"])
