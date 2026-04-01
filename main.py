@@ -5,7 +5,8 @@ from llm_work import generate_ai_metadata, get_openai_client
 from microsoft import (
     download_pptx_file_content,
     excel_setup,
-    get_file,
+    get_all_pptx_files,
+    get_pptx_file,
 )
 from presentation_reader import extract_slide_text_from_pptx_bytes
 
@@ -19,7 +20,7 @@ def main():
 
     # raw_pptx_files = get_all_pptx_files(library_drive_id, headers)
     raw_pptx_files = [
-        get_file(library_drive_id, item_id, headers)
+        get_pptx_file(library_drive_id, item_id, headers)
         for item_id in [
             "01I7HKCO3RVKMEHQRDR5GZJS6QR56L6LCY",
             # "01I7HKCO4N6ZP6BHCCCVBJDSLM4WQMMQ3Q",

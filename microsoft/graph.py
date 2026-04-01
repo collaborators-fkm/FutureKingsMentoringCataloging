@@ -1,35 +1,9 @@
-import os
-
-import msal
 import requests
 
-
-def excel_setup():
-    tenant_id = os.getenv("TENANT_ID")
-    client_id = os.getenv("CLIENT_ID")
-    client_secret = os.getenv("CLIENT_SECRET_VALUE")
-    authority = f"https://login.microsoftonline.com/{tenant_id}"
-    scopes = ["https://graph.microsoft.com/.default"]
-    site_hostname = os.getenv("SITE_HOSTNAME")
-    site_path = os.getenv("SITE_PATH")
-    drive_name = os.getenv("DRIVE_NAME")
-
-    app = msal.ConfidentialClientApplication(
-        client_id,
-        authority=authority,
-        client_credential=client_secret,
-    )
-
-    token = app.acquire_token_for_client(scopes=scopes)
-    access_token = token["access_token"]
-    headers = {"Authorization": f"Bearer {access_token}"}
-    site_id = get_site_id(site_hostname, site_path, headers)
-    library_drive_id = get_drive_id(site_id, drive_name, headers)
-
-    return headers, library_drive_id
+from .types import GraphDriveItem, GraphHeaders
 
 
-def get_site_id(site_hostname, site_path, headers):
+def get_site_id(site_hostname: str, site_path: str, headers: GraphHeaders) -> str:
     url = f"https://graph.microsoft.com/v1.0/sites/{site_hostname}:{site_path}"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -37,7 +11,7 @@ def get_site_id(site_hostname, site_path, headers):
     return site_data["id"]
 
 
-def get_drive_id(site_id, drive_name, headers):
+def get_drive_id(site_id: str, drive_name: str, headers: GraphHeaders) -> str:
     url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -48,12 +22,14 @@ def get_drive_id(site_id, drive_name, headers):
     raise ValueError("Drive not found")
 
 
-def get_all_pptx_files(drive_id, headers, item_id="") -> list[str]:
+def get_all_pptx_files(
+    drive_id: str, headers: GraphHeaders, item_id: str = ""
+) -> list[GraphDriveItem]:
     item_path = f"items/{item_id}" if item_id else "root"
     url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/{item_path}/children"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
-    items = resp.json()["value"]
+    items: list[GraphDriveItem] = resp.json()["value"]
 
     subfolders = [x for x in items if "folder" in x]
     subfolder_pptx_files = [
@@ -65,14 +41,18 @@ def get_all_pptx_files(drive_id, headers, item_id="") -> list[str]:
     ]
 
 
-def get_file(drive_id, item_id, headers):
+def get_pptx_file(
+    drive_id: str, item_id: str, headers: GraphHeaders
+) -> GraphDriveItem:
     url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
 
-def download_pptx_file_content(drive_id, item_id, headers):
+def download_pptx_file_content(
+    drive_id: str, item_id: str, headers: GraphHeaders
+) -> bytes:
     url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/content"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
