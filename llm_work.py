@@ -1,39 +1,8 @@
 import os
-from typing import Literal
 
 from configuration import SLIDE_BREAK
 from openai import OpenAI
-from pydantic import BaseModel, Field
-
-
-class PresentationMetadata(BaseModel):
-    theme: list[
-        Literal[
-            "Confidence & Leadership",
-            "Financial Literacy",
-            "College & Career Prep",
-        ]
-    ] = Field(
-        description=(
-            "One or more applicable themes. Only use multiple themes when necessary."
-        )
-    )
-    description: str = Field(
-        description="A concise description of the presentation in one or two sentences."
-    )
-    duration_estimate_minutes: int = Field(
-        description=(
-            "Estimated total presentation duration in minutes, rounded to the nearest "
-            "15 minutes unless over 120 minutes, in which case round to the nearest hour."
-        )
-    )
-    audience: Literal["Middle school", "High school", "College"]
-    activity_length_minutes: int = Field(
-        description=(
-            "Approximate minutes of activity time in the presentation, using the same "
-            "rounding rules as duration_estimate_minutes."
-        )
-    )
+from pydantic import BaseModel
 
 
 def get_openai_client() -> OpenAI:
@@ -50,7 +19,8 @@ def generate_ai_metadata(
     slide_texts: list[str],
     number_of_slides: int,
     average_words_per_slide: float,
-) -> PresentationMetadata:
+    response_model: type[BaseModel],
+) -> BaseModel:
     entire_slide_text = SLIDE_BREAK.join(slide_texts)
 
     response = client.responses.parse(
@@ -60,7 +30,8 @@ def generate_ai_metadata(
                 "role": "system",
                 "content": (
                     "You classify educational presentation decks. "
-                    "Return only schema-valid structured data."
+                    "Return only schema-valid structured data. "
+                    "Do not invent details that are not supported by the deck."
                 ),
             },
             {
@@ -74,7 +45,7 @@ def generate_ai_metadata(
                 ),
             },
         ],
-        text_format=PresentationMetadata,
+        text_format=response_model,
     )
 
     if response.output_parsed is None:

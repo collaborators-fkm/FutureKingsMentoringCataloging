@@ -38,7 +38,9 @@ def serialize_object_for_excel(obj: dict) -> dict:
 
 
 def write_objects_to_excel(
-    objects: list[dict], output_filename: str = "workshop_catalog.xlsx"
+    objects: list[dict],
+    output_filename: str = "workshop_catalog.xlsx",
+    headers: list[str] | None = None,
 ) -> None:
     workbook = Workbook()
     worksheet = workbook.active
@@ -46,13 +48,15 @@ def write_objects_to_excel(
 
     output_path = os.path.join(OUTPUT_DIR, output_filename)
 
+    if headers is None:
+        headers = list(objects[0].keys()) if objects else []
+    worksheet.append(headers)
+
     if not objects:
         workbook.save(output_path)
         return
 
     excel_objects = [serialize_object_for_excel(obj) for obj in objects]
-    headers = list(excel_objects[0].keys())
-    worksheet.append(headers)
 
     for column_index, header in enumerate(headers, start=1):
         column_letter = get_column_letter(column_index)
