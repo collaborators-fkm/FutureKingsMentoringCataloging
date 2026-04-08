@@ -18,6 +18,7 @@ from configuration import (
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,19 @@ def write_objects_to_excel(
         worksheet.row_dimensions[row[0].row].height = DEFAULT_DATA_ROW_HEIGHT
         for cell in row:
             cell.alignment = Alignment(wrap_text=False, vertical="top")
+
+    if headers:
+        last_column_letter = get_column_letter(len(headers))
+        table_ref = f"A1:{last_column_letter}{worksheet.max_row}"
+        table = Table(displayName="PresentationsTable", ref=table_ref)
+        table.tableStyleInfo = TableStyleInfo(
+            name="TableStyleMedium2",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=True,
+            showColumnStripes=False,
+        )
+        worksheet.add_table(table)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     workbook.save(output_path)
