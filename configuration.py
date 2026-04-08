@@ -48,12 +48,71 @@ def get_presentation_columns(registry: GeneratorRegistry) -> list[PresentationCo
                 "theme",
                 list[
                     Literal[
-                        "Confidence & Leadership",
+                        "College / Career Prep",
+                        "Future King Tenets / Self- Esteem",
                         "Financial Literacy",
-                        "College & Career Prep",
+                        "Entrepreneurship",
+                        "Life skills",
+                        "STEAM",
+                        "Key Events",
                     ]
                 ],
                 "One or more applicable themes. Only use multiple themes when necessary.",
+            ),
+        },
+        {
+            "name": f"subtheme{GENERATED_BY_AI_SUFFIX}",
+            "generator": registry.ai_generator(
+                "subtheme",
+                list[
+                    Literal[
+                        "Financial Aid",
+                        "Resume / Cover Letter",
+                        "Applying to school",
+                        "Career",
+                        "Trades",
+                        "Brotherhood",
+                        "FKM Tenets",
+                        "Emotional IQ",
+                        "Stepping Stones Project",
+                        "Charity/Community Service",
+                        "Mother's Day",
+                        "Budgeting",
+                        "Saving",
+                        "Credit",
+                        "Investing",
+                        "Financial Accountability/Responsibility",
+                        "Financial Institutions",
+                        "Start Up/Business Fundamentals",
+                        "T-Shirt Business",
+                        "Cooking",
+                        "Car Maintenance",
+                        "STEM",
+                        "Coding",
+                        "Arts",
+                        "Promotion",
+                        "Orientation",
+                        "BHM Panel",
+                        "Parent's Committee",
+                    ]
+                ],
+                (
+                    "One or more applicable subthemes from the approved curriculum "
+                    "list. Only use subthemes that belong to the selected theme based "
+                    "on this mapping from the curriculum table: College / Career Prep "
+                    "-> Financial Aid, Resume / Cover Letter, Applying to school, "
+                    "Career, Trades; Future King Tenets / Self- Esteem -> Brotherhood, "
+                    "FKM Tenets, Emotional IQ, Stepping Stones Project, "
+                    "Charity/Community Service, Mother's Day; Financial Literacy -> "
+                    "Budgeting, Saving, Credit, Investing, Financial "
+                    "Accountability/Responsibility, Financial Institutions; "
+                    "Entrepreneurship -> Start Up/Business Fundamentals, T-Shirt "
+                    "Business; Life skills -> Cooking, Car Maintenance; STEAM -> STEM, "
+                    "Coding, Arts; Key Events -> Promotion, Orientation, BHM Panel, "
+                    "Parent's Committee. Only use multiple subthemes when the deck "
+                    "clearly covers more than one, and never assign a subtheme that "
+                    "belongs to a different theme."
+                ),
             ),
         },
         {
