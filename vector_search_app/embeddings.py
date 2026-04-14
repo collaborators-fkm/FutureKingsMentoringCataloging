@@ -1,15 +1,18 @@
 """Embedding helpers for workbook rows and search queries."""
 
 from collections.abc import Sequence
+import os
 
-from llm_work import get_openai_client
 from openai import OpenAI
 
 from vector_search_app.settings import get_embedding_model
 
 
 def _get_client() -> OpenAI:
-    return get_openai_client()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is missing from the environment")
+    return OpenAI(api_key=api_key)
 
 
 def embed_texts(texts: Sequence[str]) -> list[list[float]]:
