@@ -52,6 +52,32 @@ uv run python excel_generation/main.py --restart-from-scratch
 
 ## Vector Search App
 
+### Current-State Storage For Deployment
+
+The deployed app is being built for Azure App Service Free tier, so Postgres is
+intentionally treated as current-state storage instead of an audit log. This
+keeps the database small and predictable.
+
+- `presentations` stores one row per current PowerPoint. When Microsoft Graph
+  reports that a PowerPoint was deleted or removed from the configured
+  SharePoint folders, the matching Postgres row is hard-deleted. Keeping old
+  rows would make search/export show stale files and would grow the database
+  over time, which can increase hosting cost.
+- `presentation_sources` stores the current configured SharePoint sources and
+  their latest Graph delta links. Those delta links let Reload ask Microsoft
+  Graph for only changes since the last successful reload.
+- `sync_status` is designed to contain exactly one row. Each Reload overwrites
+  that row with the latest status, counts, timestamps, and error. The app does
+  not keep a reload history because historical runs are not needed for the UI
+  and would steadily grow the database.
+
+The full configured spreadsheet row is stored in `presentations.metadata` as
+JSON. Stable operational fields such as source, drive ID, item ID, readable
+web URL, and embedding also have normal columns so the app can update, search,
+and export efficiently. The readable `presentation_path` value stays in
+`presentations.metadata` because it is an export/display column that can be
+reconstructed from `presentation_sources`.
+
 ### How Data Gets Into The App
 
 The vector search app does not scrape PowerPoints or talk to Microsoft Graph directly. It accepts an uploaded `.xlsx` workbook through the browser or CLI:

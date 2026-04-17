@@ -12,6 +12,7 @@ from vector_search_app.db import (
     count_presentations,
     ensure_schema,
     fetch_presentations,
+    get_sync_status,
     search_presentations,
 )
 from vector_search_app.embeddings import embed_text
@@ -49,8 +50,12 @@ def index_html() -> FileResponse:
 
 
 @app.get("/api/health")
-def health() -> dict[str, str | int]:
-    return {"status": "ok", "indexed_rows": count_presentations()}
+def health() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "indexed_rows": count_presentations(),
+        "sync_status": get_sync_status().model_dump(),
+    }
 
 
 @app.get("/api/presentations")

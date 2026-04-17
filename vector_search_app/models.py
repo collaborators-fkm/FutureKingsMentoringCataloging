@@ -25,3 +25,16 @@ class SearchResult(PresentationRecord):
     """Workbook row plus similarity score."""
 
     score: float
+
+
+class SyncStatus(BaseModel):
+    """Current reload status for the single-app current-state workflow."""
+
+    status: str
+    total_items: int
+    processed_items: int
+    indexed_rows: int
+    removed_rows: int
+    started_at: str | None = None
+    finished_at: str | None = None
+    error: str | None = None
