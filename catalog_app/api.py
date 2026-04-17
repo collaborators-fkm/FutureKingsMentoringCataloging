@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -60,15 +60,6 @@ def health() -> dict[str, object]:
         "status": "ok",
         "indexed_rows": count_presentations(),
         "sync_status": get_sync_status().model_dump(),
-    }
-
-
-@app.get("/api/me")
-def me(request: Request) -> dict[str, object]:
-    return {
-        "authenticated": False,
-        "display_name": request.headers.get("x-ms-client-principal-name", "Local user"),
-        "tenant_id": request.headers.get("x-ms-client-principal-idp"),
     }
 
 
