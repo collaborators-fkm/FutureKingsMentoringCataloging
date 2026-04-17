@@ -1,193 +1,104 @@
 # fkm
 
-Builds an Excel catalog of workshop PowerPoints with a mix of direct metadata and AI-generated fields, and now also includes a workbook-backed vector search app.
+Internal catalog app for FKM workshop PowerPoints.
 
-## What This Project Does
+The app scans configured SharePoint document libraries for `.pptx` files, extracts slide text, asks OpenAI to generate configured spreadsheet fields, stores the current catalog in Postgres with `pgvector`, provides semantic search, and exports the current catalog as Excel.
 
-The script scans one or more Microsoft drives/folders for `.pptx` files, reads the text from each slide, asks OpenAI to classify or summarize each presentation, and writes the results to an Excel workbook.
+## App Shape
 
-The main output is:
+- [`catalog_app/api.py`](/Users/acheung/Desktop/fkm/catalog_app/api.py): FastAPI app, static UI, reload/search/export endpoints
+- [`catalog_app/catalog_sync.py`](/Users/acheung/Desktop/fkm/catalog_app/catalog_sync.py): manual SharePoint reload workflow
+- [`catalog_app/db/`](/Users/acheung/Desktop/fkm/catalog_app/db): schema and current-state Postgres helpers
+- [`catalog_app/generation/configuration.py`](/Users/acheung/Desktop/fkm/catalog_app/generation/configuration.py): SharePoint sources and official Excel column configuration
+- [`catalog_app/generation/`](/Users/acheung/Desktop/fkm/catalog_app/generation): Microsoft Graph, PowerPoint parsing, OpenAI metadata, and Excel export helpers
+- [`catalog_app/static/`](/Users/acheung/Desktop/fkm/catalog_app/static): browser UI
 
-- `output/workshop_catalog.xlsx`: the Excel file you care about
-- `output/workshop_catalog_checkpoint.json`: a progress file used to resume long runs
+## Current-State Storage
 
-The vector search app accepts an uploaded `.xlsx` workbook, turns each workbook row into searchable text, stores embeddings in Postgres with `pgvector`, and serves a spreadsheet-like UI plus semantic search.
+This app is designed for a small Azure App Service deployment, so Postgres stores current state only, not history.
 
-## How The Code Is Organized
+- `presentations` stores one row per current PowerPoint. If Microsoft Graph reports a file was deleted or removed from the configured folders, the row is hard-deleted so search/export do not show stale files and the database does not grow forever.
+- `presentation_sources` stores one row per configured SharePoint source plus its latest Microsoft Graph delta link. Delta links let Reload ask Graph for changes since the last successful reload.
+- `sync_status` contains exactly one row. Each Reload overwrites it with the latest status, counts, timestamps, and error. Historical reload runs are intentionally not retained.
 
-- [`excel_generation/main.py`](/Users/acheung/Desktop/fkm/excel_generation/main.py): the full workflow from start to finish
-- [`excel_generation/configuration.py`](/Users/acheung/Desktop/fkm/excel_generation/configuration.py): the safest place to edit drives, folders, and Excel columns
-- [`excel_generation/generators.py`](/Users/acheung/Desktop/fkm/excel_generation/generators.py): reusable helpers that know how to fill column values
-- [`excel_generation/column_helpers.py`](/Users/acheung/Desktop/fkm/excel_generation/column_helpers.py): turns the configured columns into rows and an AI schema
-- [`excel_generation/llm_work.py`](/Users/acheung/Desktop/fkm/excel_generation/llm_work.py): OpenAI client setup and AI metadata generation
-- [`excel_generation/presentation_reader.py`](/Users/acheung/Desktop/fkm/excel_generation/presentation_reader.py): extracts text from PowerPoint files
-- [`excel_generation/excel_maker.py`](/Users/acheung/Desktop/fkm/excel_generation/excel_maker.py): writes the Excel workbook
-- [`excel_generation/checkpoint.py`](/Users/acheung/Desktop/fkm/excel_generation/checkpoint.py): saves and restores progress
-- [`excel_generation/app_types.py`](/Users/acheung/Desktop/fkm/excel_generation/app_types.py): shared Excel-generation types
-- [`excel_generation/microsoft/`](/Users/acheung/Desktop/fkm/excel_generation/microsoft): Microsoft Graph authentication, requests, and related types
-- [`vector_search_app/`](/Users/acheung/Desktop/fkm/vector_search_app): workbook indexing, FastAPI service, `pgvector` storage, and static UI
+The full spreadsheet row is stored in `presentations.metadata` as JSON. Stable operational fields such as source key, drive ID, item ID, web URL, embedding, and timestamps also have normal columns so the app can update and search efficiently.
 
-## How To Run It
+## Local Run
 
-1. Make sure the required environment variables are set:
-   - `OPENAI_API_KEY`
-   - `TENANT_ID`
-   - `CLIENT_ID`
-   - `CLIENT_SECRET_VALUE`
-   - `SITE_HOSTNAME`
-   - `SITE_PATH`
-2. Run the program.
-
-```bash
-uv run python excel_generation/main.py
-```
-
-If a previous run stopped in the middle and you want to continue, just run the same command again. It will use the checkpoint automatically.
-
-If you want to ignore the checkpoint and start over:
-
-```bash
-uv run python excel_generation/main.py --restart-from-scratch
-```
-
-## Vector Search App
-
-### Current-State Storage For Deployment
-
-The deployed app is being built for Azure App Service Free tier, so Postgres is
-intentionally treated as current-state storage instead of an audit log. This
-keeps the database small and predictable.
-
-- `presentations` stores one row per current PowerPoint. When Microsoft Graph
-  reports that a PowerPoint was deleted or removed from the configured
-  SharePoint folders, the matching Postgres row is hard-deleted. Keeping old
-  rows would make search/export show stale files and would grow the database
-  over time, which can increase hosting cost.
-- `presentation_sources` stores the current configured SharePoint sources and
-  their latest Graph delta links. Those delta links let Reload ask Microsoft
-  Graph for only changes since the last successful reload.
-- `sync_status` is designed to contain exactly one row. Each Reload overwrites
-  that row with the latest status, counts, timestamps, and error. The app does
-  not keep a reload history because historical runs are not needed for the UI
-  and would steadily grow the database.
-
-The full configured spreadsheet row is stored in `presentations.metadata` as
-JSON. Stable operational fields such as source, drive ID, item ID, readable
-web URL, and embedding also have normal columns so the app can update, search,
-and export efficiently. The readable `presentation_path` value stays in
-`presentations.metadata` because it is an export/display column that can be
-reconstructed from `presentation_sources`.
-
-### How Data Gets Into The App
-
-The vector search app does not scrape PowerPoints or talk to Microsoft Graph directly. It accepts an uploaded `.xlsx` workbook through the browser or CLI:
-
-1. Upload a workbook in the UI, or pass one to the CLI.
-2. Use the first row as column headers.
-3. Convert each later row into:
-   - row metadata as JSON
-   - one combined searchable text string built from the most useful columns
-4. Generate an embedding for that searchable text.
-5. Upsert the row plus embedding into Postgres with `pgvector`.
-
-That means the workbook remains the source of truth, while Postgres is only the search index.
-
-### Local Commands
-
-Index the workbook into Postgres:
-
-```bash
-uv run python -m vector_search_app.cli --workbook-path output/workshop_catalog.xlsx
-```
-
-Run the API locally:
-
-```bash
-uv run uvicorn vector_search_app.api:app --reload
-```
-
-### Docker Compose
-
-Start Postgres and the vector search service:
+Start Postgres and the app:
 
 ```bash
 docker compose up --build
 ```
 
 Open [http://localhost:8000](http://localhost:8000).
-Upload a workbook in the page and the app will index that file.
 
-## How To Change Things
-
-The safest approach for non-coders is to ask a coding agent to make changes
-instead of manually editing Python files. GitHub Copilot in Visual Studio Code is
-one option. Use the agent to edit the project, then rerun the Excel generator.
-
-Good agent prompts are specific and mention the files below:
-
-- "In `excel_generation/configuration.py`, add a new AI-generated Excel column
-  called `audience_level*`. It should classify each presentation as Elementary,
-  Middle School, High School, College, Parent, or General. Then explain how to
-  rerun the workbook."
-- "In `excel_generation/configuration.py`, add a new source folder under
-  `DRIVE_SOURCES` for the Documents drive at `<folder path>`."
-- "Change the way `duration_estimate_mins*` is calculated. Keep the Excel column
-  name the same, but update the AI instructions to prefer shorter estimates for
-  decks with fewer than 10 slides."
-
-After an agent changes columns, run this so every row is rebuilt with the new
-column values:
+Useful local command without Docker:
 
 ```bash
-uv run python excel_generation/main.py --restart-from-scratch
+uv run uvicorn catalog_app.api:app --reload
 ```
 
-### Add A Column
+## Workflow
 
-- Open [`excel_generation/configuration.py`](/Users/acheung/Desktop/fkm/excel_generation/configuration.py).
-- Add a new entry in `get_presentation_columns(...)`.
-- For a direct Microsoft field, use `registry.identity_generator(...)`.
-- For nested/non-standard values, add a generator method in [`excel_generation/generators.py`](/Users/acheung/Desktop/fkm/excel_generation/generators.py) and use it in the column list.
-- For an AI field, use `registry.ai_generator(field_name, output_type, description)`.
-- Put all shared typed structures in [`excel_generation/app_types.py`](/Users/acheung/Desktop/fkm/excel_generation/app_types.py) if a new one is needed.
+1. Click **Reload from SharePoint**.
+2. The app uses Microsoft Graph delta queries to find changed/deleted PowerPoints.
+3. Changed PowerPoints are parsed, classified with OpenAI, embedded, and upserted into Postgres.
+4. Deleted or removed PowerPoints are hard-deleted from Postgres.
+5. Use the table, semantic search, or **Export Excel**.
 
-After an agent changes columns, run this so every row is rebuilt with the new
-column values:
+The first successful reload establishes the baseline delta links. Later reloads use those links to fetch only changes.
+
+## Required Environment Variables
+
+Application:
+
+- `DATABASE_URL`: Postgres connection string
+- `OPENAI_API_KEY`: OpenAI API key
+- `EMBEDDING_MODEL`: optional, defaults to `text-embedding-3-small`
+- `EMBEDDING_DIMENSION`: optional, defaults to `1536`
+
+Microsoft Graph app credentials:
+
+- `TENANT_ID`: Microsoft Entra tenant ID
+- `CLIENT_ID`: app registration client ID used for Microsoft Graph
+- `CLIENT_SECRET_VALUE`: app registration client secret value, not the secret ID
+- `SITE_HOSTNAME`: SharePoint hostname, for example `contoso.sharepoint.com`
+- `SITE_PATH`: SharePoint site path, for example `/sites/MySite`
+
+## Azure App Service Authentication
+
+Access control is handled by Azure App Service Authentication, not by FastAPI code.
+
+In Azure App Service > Authentication, configure Microsoft as the identity provider:
+
+- Tenant type: Workforce/current tenant
+- Supported account types: Current tenant / single tenant
+- Authentication: Require authentication
+- Unauthenticated requests: HTTP 302 redirect
+- Tenant requirement: Allow requests only from the issuer tenant
+
+With that setup, requests from outside your organization are blocked before they reach the container.
+
+## Azure Container Notes
+
+The production image is built from [`Dockerfile.catalog-app`](/Users/acheung/Desktop/fkm/Dockerfile.catalog-app).
+
+The container starts:
 
 ```bash
-uv run python excel_generation/main.py --restart-from-scratch
+uv run uvicorn catalog_app.api:app --host 0.0.0.0 --port ${PORT:-${WEBSITES_PORT:-8000}}
 ```
 
-For most new spreadsheet columns, ask the agent for an AI-generated column. That
-usually only requires a change in `excel_generation/configuration.py`.
+For Azure App Service custom containers, configure the app settings above and set the container port setting if your plan requires it.
 
-### Add A Folder To Check
+## Changing The Catalog
 
-- Open [`excel_generation/configuration.py`](/Users/acheung/Desktop/fkm/excel_generation/configuration.py).
-- Add an entry to `DRIVE_SOURCES`.
-- Use `{"name": "<drive name>"}` to scan an entire drive.
-- Use `{"name": "<drive name>", "folder": "<folder path>"}` to scan one folder tree inside that drive.
-- Run the export again; folder IDs are resolved from `DRIVE_SOURCES` at startup.
+Edit [`catalog_app/generation/configuration.py`](/Users/acheung/Desktop/fkm/catalog_app/generation/configuration.py).
 
-### Change How A Column Is Calculated
+- `DRIVE_SOURCES` controls which SharePoint drives/folders are scanned.
+- `get_presentation_columns(...)` controls the official Excel export columns.
+- Direct columns use generators that read Microsoft Graph or parsed slide data.
+- AI columns use `registry.ai_generator(field_name, output_type, description)`.
 
-1. Open [`excel_generation/generators.py`](/Users/acheung/Desktop/fkm/excel_generation/generators.py).
-2. Add a new method on `GeneratorRegistry` that returns a small `generate(...)` function.
-3. Use that new generator inside [`excel_generation/configuration.py`](/Users/acheung/Desktop/fkm/excel_generation/configuration.py).
-
-This pattern may look unusual if you are new to Python. The short version is: the registry methods build tiny helper functions so configuration stays simple.
-
-## Beginner Editing Notes
-
-- Start from [`excel_generation/configuration.py`](/Users/acheung/Desktop/fkm/excel_generation/configuration.py) unless you know you need deeper changes.
-- Read [`excel_generation/main.py`](/Users/acheung/Desktop/fkm/excel_generation/main.py) top to bottom once before changing behavior. It gives you the full mental model.
-- Shared Excel-generation types belong in [`excel_generation/app_types.py`](/Users/acheung/Desktop/fkm/excel_generation/app_types.py), not scattered across feature files.
-- AI columns are marked with `*` in the column name because `GENERATED_BY_AI_SUFFIX = "*"` in configuration.
-- The Excel file is rewritten often during a run. That is intentional so you can inspect progress.
-
-## Troubleshooting
-
-- If Microsoft authentication fails, check the Microsoft environment variables first.
-- If OpenAI fails, check `OPENAI_API_KEY`.
-- If the script stops partway through, rerun it and it should resume from the checkpoint.
-- If you make a bad checkpoint and want a clean rerun, use `--restart-from-scratch`.
+After changing sources or columns, run Reload from the web UI. Column changes may require regenerating many rows and can take time and OpenAI tokens.
