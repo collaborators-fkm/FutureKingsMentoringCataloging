@@ -72,6 +72,7 @@ h1 {
   border-radius: 20px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
+  margin-bottom: 24px;
 }
 
 .status-card,
@@ -94,23 +95,37 @@ h1 {
 }
 
 button,
+.button-link,
 input {
   font: inherit;
 }
 
-button {
+button,
+.button-link {
+  display: inline-block;
   border: 0;
   border-radius: 999px;
   background: var(--accent);
   color: white;
   cursor: pointer;
   padding: 11px 16px;
+  text-align: center;
+  text-decoration: none;
   transition: transform 120ms ease, background 120ms ease;
 }
 
-button:hover {
+button:hover,
+.button-link:hover {
   background: var(--accent-strong);
   transform: translateY(-1px);
+}
+
+.fixed-export {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  box-shadow: var(--shadow);
 }
 
 .ghost-button {

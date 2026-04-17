@@ -304,6 +304,22 @@ def fetch_presentations(limit: int = 10, offset: int = 0) -> list[PresentationRe
     return [PresentationRecord(**row) for row in results]
 
 
+def fetch_all_presentation_metadata() -> list[dict]:
+    """Return all current catalog rows as configured spreadsheet metadata."""
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT metadata
+                FROM presentations
+                ORDER BY sheet_name, row_number
+                """
+            )
+            results = cursor.fetchall()
+
+    return [dict(row["metadata"]) for row in results]
+
+
 def count_presentations() -> int:
     with get_connection() as connection:
         with connection.cursor() as cursor:

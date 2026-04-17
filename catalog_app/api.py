@@ -3,21 +3,26 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from catalog_app.catalog_sync import is_reload_running, run_catalog_reload
 from catalog_app.db import (
     count_presentations,
     ensure_schema,
+    fetch_all_presentation_metadata,
     fetch_presentations,
     get_sync_status,
     search_presentations,
     update_sync_status,
 )
 from catalog_app.embeddings import embed_text
+from catalog_app.generation.column_helpers import get_excel_column_names
+from catalog_app.generation.configuration import get_presentation_columns
+from catalog_app.generation.excel_maker import workbook_to_bytes
+from catalog_app.generation.generators import GeneratorRegistry
 from catalog_app.models import SearchRequest
 
 STATIC_DIR = Path(__file__).with_name("static")
@@ -58,6 +63,15 @@ def health() -> dict[str, object]:
     }
 
 
+@app.get("/api/me")
+def me(request: Request) -> dict[str, object]:
+    return {
+        "authenticated": False,
+        "display_name": request.headers.get("x-ms-client-principal-name", "Local user"),
+        "tenant_id": request.headers.get("x-ms-client-principal-idp"),
+    }
+
+
 @app.post("/api/reload")
 def reload_catalog(background_tasks: BackgroundTasks) -> dict[str, object]:
     if is_reload_running():
@@ -87,6 +101,23 @@ def presentations(limit: int = 10, offset: int = 0) -> dict[str, object]:
         "limit": limit,
         "offset": offset,
     }
+
+
+@app.get("/api/export.xlsx")
+def export_excel() -> Response:
+    rows = fetch_all_presentation_metadata()
+    registry = GeneratorRegistry(default_drive_id="", headers={})
+    headers = get_excel_column_names(get_presentation_columns(registry))
+    workbook_bytes = workbook_to_bytes(rows, headers=headers)
+    return Response(
+        content=workbook_bytes,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": 'attachment; filename="workshop_catalog.xlsx"',
+        },
+    )
 
 
 @app.post("/api/search")

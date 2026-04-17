@@ -7,6 +7,7 @@ objects into values that Excel can store safely and then writes the workbook.
 import json
 import logging
 import os
+from io import BytesIO
 
 from catalog_app.generation.configuration import (
     DEFAULT_DATA_ROW_HEIGHT,
@@ -93,30 +94,18 @@ def serialize_object_for_excel(obj: dict) -> dict:
     return serialized
 
 
-def write_objects_to_excel(
-    objects: list[dict],
-    output_filename: str = "workshop_catalog.xlsx",
-    headers: list[str] | None = None,
-) -> None:
-    """Write the current export rows to an `.xlsx` file.
-
-    The workbook is rebuilt from scratch each time this function runs. That is
-    simpler and safer than trying to update individual rows in place.
-    """
+def build_workbook(objects: list[dict], headers: list[str] | None = None) -> Workbook:
+    """Build an Excel workbook from current catalog rows."""
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Presentations"
-
-    output_path = os.path.join(OUTPUT_DIR, output_filename)
 
     if headers is None:
         headers = list(objects[0].keys()) if objects else []
     worksheet.append(headers)
 
     if not objects:
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        workbook.save(output_path)
-        return
+        return workbook
 
     excel_objects = [serialize_object_for_excel(obj) for obj in objects]
 
@@ -149,5 +138,26 @@ def write_objects_to_excel(
         )
         worksheet.add_table(table)
 
+    return workbook
+
+
+def workbook_to_bytes(objects: list[dict], headers: list[str] | None = None) -> bytes:
+    """Return a generated Excel workbook as `.xlsx` bytes."""
+    workbook = build_workbook(objects, headers)
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+    return output.getvalue()
+
+
+def write_objects_to_excel(
+    objects: list[dict],
+    output_filename: str = "workshop_catalog.xlsx",
+    headers: list[str] | None = None,
+) -> None:
+    """Write the current export rows to an `.xlsx` file."""
+    workbook = build_workbook(objects, headers)
+    output_path = os.path.join(OUTPUT_DIR, output_filename)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     workbook.save(output_path)
+    workbook.close()

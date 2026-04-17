@@ -7,17 +7,24 @@
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
+    <a id="export-link" class="button-link fixed-export" href="/api/export.xlsx">
+      Export Excel
+    </a>
     <main class="page">
       <section class="hero">
         <div>
           <p class="eyebrow">FKM catalog</p>
           <h1>Catalog view with semantic search</h1>
           <p class="lede">
-            Reload the SharePoint catalog into Postgres, browse the configured
-            spreadsheet columns, or search by meaning.
+            Browse the configured spreadsheet columns, search by meaning,
+            or export to csv.
           </p>
         </div>
         <div class="status-card">
+          <div class="status-row">
+            <span>User</span>
+            <code id="user-name">Local user</code>
+          </div>
           <div class="status-row">
             <span>Reload status</span>
             <code id="reload-status">Idle</code>

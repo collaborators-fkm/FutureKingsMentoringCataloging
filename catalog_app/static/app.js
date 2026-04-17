@@ -189,6 +189,11 @@ async function loadHealth() {
   renderReloadStatus(health.sync_status || {});
 }
 
+async function loadMe() {
+  const me = await fetchJson("/api/me");
+  document.getElementById("user-name").textContent = me.display_name || "Local user";
+}
+
 function renderReloadStatus(status) {
   const label = status.status || "idle";
   document.getElementById("reload-status").textContent = label;
@@ -336,7 +341,7 @@ async function bootstrap() {
   document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
   document.getElementById("prev-page-button").addEventListener("click", goToPreviousPage);
   document.getElementById("next-page-button").addEventListener("click", goToNextPage);
-  await Promise.all([loadHealth(), loadRows()]);
+  await Promise.all([loadMe(), loadHealth(), loadRows()]);
   if (document.getElementById("reload-status").textContent === "running") {
     startStatusPolling();
   }
