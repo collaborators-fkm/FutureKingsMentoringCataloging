@@ -8,7 +8,7 @@ import json
 import logging
 import os
 
-from configuration import (
+from catalog_app.generation.configuration import (
     DEFAULT_DATA_ROW_HEIGHT,
     EXCEL_CELL_CHARACTER_LIMIT,
     MINIMUM_COLUMN_WIDTH,

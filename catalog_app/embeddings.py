@@ -5,7 +5,7 @@ import os
 
 from openai import OpenAI
 
-from vector_search_app.settings import get_embedding_model
+from catalog_app.settings import get_embedding_model
 
 
 def _get_client() -> OpenAI:

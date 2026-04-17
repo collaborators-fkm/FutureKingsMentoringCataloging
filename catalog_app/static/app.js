@@ -9,6 +9,8 @@ const state = {
 };
 
 const HIDDEN_COLUMNS = new Set(["slide_texts"]);
+const STATUS_POLL_MS = 5000;
+let statusPollId = null;
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
@@ -61,7 +63,7 @@ function getTableRows() {
 function renderTable() {
   const container = document.getElementById("table-container");
   if (!state.columns.length) {
-    container.innerHTML = "<p>No indexed workbook rows yet.</p>";
+    container.innerHTML = "<p>No catalog rows yet. Run Reload first.</p>";
     return;
   }
 
@@ -184,6 +186,55 @@ function renderSearchResults(items) {
 async function loadHealth() {
   const health = await fetchJson("/api/health");
   document.getElementById("indexed-count").textContent = health.indexed_rows;
+  renderReloadStatus(health.sync_status || {});
+}
+
+function renderReloadStatus(status) {
+  const label = status.status || "idle";
+  document.getElementById("reload-status").textContent = label;
+  document.getElementById("reload-progress").textContent =
+    `${status.processed_items || 0} / ${status.total_items || 0}`;
+  document.getElementById("reload-button").disabled = false;
+  document.getElementById("reload-button").textContent =
+    label === "running" ? "Check reload status" : "Reload from SharePoint";
+
+  const errorBox = document.getElementById("reload-error");
+  if (status.error) {
+    errorBox.textContent = status.error;
+    errorBox.classList.remove("hidden");
+  } else {
+    errorBox.classList.add("hidden");
+  }
+}
+
+function startStatusPolling() {
+  if (statusPollId !== null) {
+    return;
+  }
+  statusPollId = window.setInterval(async () => {
+    try {
+      const status = await fetchJson("/api/reload/status");
+      renderReloadStatus(status);
+      await loadRows();
+      document.getElementById("indexed-count").textContent = state.totalRows;
+      if (status.status !== "running") {
+        stopStatusPolling();
+      }
+    } catch (error) {
+      const errorBox = document.getElementById("reload-error");
+      errorBox.textContent = error.message;
+      errorBox.classList.remove("hidden");
+      stopStatusPolling();
+    }
+  }, STATUS_POLL_MS);
+}
+
+function stopStatusPolling() {
+  if (statusPollId === null) {
+    return;
+  }
+  window.clearInterval(statusPollId);
+  statusPollId = null;
 }
 
 function updatePaginationControls() {
@@ -202,37 +253,6 @@ async function loadRows() {
   state.columns = (payload.columns || []).filter((key) => !HIDDEN_COLUMNS.has(key));
   updatePaginationControls();
   renderTable();
-}
-
-async function uploadWorkbook() {
-  const fileInput = document.getElementById("workbook-file-input");
-  const button = document.getElementById("upload-button");
-  const file = fileInput.files?.[0];
-  if (!file) {
-    throw new Error("Choose a workbook file before uploading.");
-  }
-
-  button.disabled = true;
-  button.textContent = "Uploading...";
-  try {
-    const formData = new FormData();
-    formData.append("workbook", file);
-    const response = await fetch("/api/index", {
-      method: "POST",
-      body: formData,
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.detail || `Request failed: ${response.status}`);
-    }
-    document.getElementById("workbook-name").textContent = file.name;
-    state.page = 1;
-    await loadHealth();
-    await loadRows();
-  } finally {
-    button.disabled = false;
-    button.textContent = "Upload and index";
-  }
 }
 
 async function handleSearch(event) {
@@ -257,6 +277,22 @@ async function handleSearch(event) {
   } catch (error) {
     errorBox.textContent = error.message;
     errorBox.classList.remove("hidden");
+  }
+}
+
+async function reloadCatalog() {
+  const currentStatus = await fetchJson("/api/reload/status");
+  renderReloadStatus(currentStatus);
+  if (currentStatus.status === "running") {
+    startStatusPolling();
+    return;
+  }
+
+  await fetchJson("/api/reload", { method: "POST" });
+  const nextStatus = await fetchJson("/api/reload/status");
+  renderReloadStatus(nextStatus);
+  if (nextStatus.status === "running") {
+    startStatusPolling();
   }
 }
 
@@ -285,20 +321,25 @@ async function goToNextPage() {
 
 async function bootstrap() {
   document.getElementById("semantic-search-form").addEventListener("submit", handleSearch);
-  document.getElementById("upload-button").addEventListener("click", async () => {
-    const errorBox = document.getElementById("search-error");
+  document.getElementById("reload-button").addEventListener("click", async () => {
+    const errorBox = document.getElementById("reload-error");
     errorBox.classList.add("hidden");
     try {
-      await uploadWorkbook();
+      await reloadCatalog();
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.classList.remove("hidden");
+    } finally {
+      await loadHealth();
     }
   });
   document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
   document.getElementById("prev-page-button").addEventListener("click", goToPreviousPage);
   document.getElementById("next-page-button").addEventListener("click", goToNextPage);
   await Promise.all([loadHealth(), loadRows()]);
+  if (document.getElementById("reload-status").textContent === "running") {
+    startStatusPolling();
+  }
 }
 
 bootstrap().catch((error) => {

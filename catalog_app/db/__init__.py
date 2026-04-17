@@ -1,6 +1,6 @@
 """Database package exports for the current-state presentation catalog."""
 
-from vector_search_app.db.catalog import (
+from catalog_app.db.catalog import (
     count_presentations,
     delete_presentations,
     fetch_presentations,
@@ -11,7 +11,7 @@ from vector_search_app.db.catalog import (
     upsert_presentation_source,
     upsert_presentations,
 )
-from vector_search_app.db.schema import ensure_schema
+from catalog_app.db.schema import ensure_schema
 
 __all__ = [
     "count_presentations",

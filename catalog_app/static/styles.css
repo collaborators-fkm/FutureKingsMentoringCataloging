@@ -127,16 +127,14 @@ button:hover {
 }
 
 .search-field,
-.top-k-field,
-.upload-field {
+.top-k-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .search-field span,
-.top-k-field span,
-.upload-field span {
+.top-k-field span {
   color: var(--muted);
   font-size: 0.9rem;
 }

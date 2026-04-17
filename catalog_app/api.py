@@ -1,24 +1,24 @@
-"""FastAPI app for workbook-backed semantic presentation search."""
+"""FastAPI app for SharePoint-backed catalog search."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from vector_search_app.db import (
+from catalog_app.catalog_sync import is_reload_running, run_catalog_reload
+from catalog_app.db import (
     count_presentations,
     ensure_schema,
     fetch_presentations,
     get_sync_status,
     search_presentations,
+    update_sync_status,
 )
-from vector_search_app.embeddings import embed_text
-from vector_search_app.models import SearchRequest
-from vector_search_app.service import index_uploaded_workbook
-from vector_search_app.settings import get_auto_index_on_startup
+from catalog_app.embeddings import embed_text
+from catalog_app.models import SearchRequest
 
 STATIC_DIR = Path(__file__).with_name("static")
 
@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="FKM Vector Search", lifespan=lifespan)
+app = FastAPI(title="FKM Catalog", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,6 +58,21 @@ def health() -> dict[str, object]:
     }
 
 
+@app.post("/api/reload")
+def reload_catalog(background_tasks: BackgroundTasks) -> dict[str, object]:
+    if is_reload_running():
+        raise HTTPException(status_code=409, detail="A reload is already running.")
+
+    update_sync_status(status="running", started=True)
+    background_tasks.add_task(run_catalog_reload, mark_started=False)
+    return {"status": "started"}
+
+
+@app.get("/api/reload/status")
+def reload_status() -> dict[str, object]:
+    return get_sync_status().model_dump()
+
+
 @app.get("/api/presentations")
 def presentations(limit: int = 10, offset: int = 0) -> dict[str, object]:
     total = count_presentations()
@@ -74,35 +89,12 @@ def presentations(limit: int = 10, offset: int = 0) -> dict[str, object]:
     }
 
 
-@app.post("/api/index")
-async def index_endpoint(
-    workbook: UploadFile = File(...),
-    worksheet_name: str | None = Form(default=None),
-) -> dict[str, int | str]:
-    if not workbook.filename:
-        raise HTTPException(status_code=400, detail="Uploaded workbook needs a filename.")
-    if not workbook.filename.lower().endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="Only .xlsx workbook uploads are supported.")
-
-    try:
-        workbook_bytes = await workbook.read()
-        if not workbook_bytes:
-            raise HTTPException(status_code=400, detail="Uploaded workbook is empty.")
-        return index_uploaded_workbook(
-            workbook_bytes,
-            workbook.filename,
-            worksheet_name,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
 @app.post("/api/search")
 def semantic_search(request: SearchRequest) -> dict[str, object]:
     if count_presentations() == 0:
         raise HTTPException(
             status_code=400,
-            detail="No indexed rows found. Run indexing first.",
+            detail="No catalog rows found. Run Reload first.",
         )
 
     query_embedding = embed_text(request.query)

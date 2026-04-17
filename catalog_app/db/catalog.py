@@ -3,9 +3,9 @@
 from collections.abc import Sequence
 import json
 
-from vector_search_app.db.connection import get_connection
-from vector_search_app.models import PresentationRecord, SearchResult, SyncStatus
-from vector_search_app.types import IndexedWorkbookRow
+from catalog_app.db.connection import get_connection
+from catalog_app.models import PresentationRecord, SearchResult, SyncStatus
+from catalog_app.app_types import IndexedWorkbookRow
 
 
 def _vector_literal(values: Sequence[float]) -> str:
@@ -24,10 +24,10 @@ def upsert_presentations(
     with get_connection() as connection:
         with connection.cursor() as cursor:
             for row, embedding in zip(rows, embeddings, strict=True):
-                source_key = str(row.metadata.get("source_key") or "")
-                drive_id = str(row.metadata.get("drive_id") or row.metadata.get("driveId") or "")
-                item_id = str(row.metadata.get("id") or row.source_id)
-                web_url = str(row.metadata.get("web_url") or row.metadata.get("webUrl") or "")
+                source_key = row.source_key or ""
+                drive_id = row.drive_id or ""
+                item_id = row.item_id or str(row.metadata.get("id") or row.source_id)
+                web_url = row.web_url or str(row.metadata.get("web_url") or "")
                 cursor.execute(
                     """
                     INSERT INTO presentations (
@@ -40,6 +40,7 @@ def upsert_presentations(
                         drive_id,
                         item_id,
                         web_url,
+                        last_modified_at,
                         metadata,
                         searchable_text,
                         embedding,
@@ -55,6 +56,7 @@ def upsert_presentations(
                         NULLIF(%(drive_id)s, ''),
                         NULLIF(%(item_id)s, ''),
                         NULLIF(%(web_url)s, ''),
+                        NULLIF(%(last_modified_at)s, '')::timestamptz,
                         %(metadata)s::jsonb,
                         %(searchable_text)s,
                         %(embedding)s::vector,
@@ -69,6 +71,7 @@ def upsert_presentations(
                         drive_id = EXCLUDED.drive_id,
                         item_id = EXCLUDED.item_id,
                         web_url = EXCLUDED.web_url,
+                        last_modified_at = EXCLUDED.last_modified_at,
                         metadata = EXCLUDED.metadata,
                         searchable_text = EXCLUDED.searchable_text,
                         embedding = EXCLUDED.embedding,
@@ -84,6 +87,7 @@ def upsert_presentations(
                         "drive_id": drive_id,
                         "item_id": item_id,
                         "web_url": web_url,
+                        "last_modified_at": row.last_modified_at or "",
                         "metadata": json.dumps(row.metadata),
                         "searchable_text": row.searchable_text,
                         "embedding": _vector_literal(embedding),

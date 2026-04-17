@@ -1,7 +1,7 @@
 """Database schema setup for the current-state presentation catalog."""
 
-from vector_search_app.db.connection import get_connection
-from vector_search_app.settings import get_embedding_dimension
+from catalog_app.db.connection import get_connection
+from catalog_app.settings import get_embedding_dimension
 
 
 def ensure_schema() -> None:

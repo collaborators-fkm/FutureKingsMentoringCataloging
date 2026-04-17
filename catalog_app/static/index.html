@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Presentation Vector Search</title>
+    <title>FKM Catalog Search</title>
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
@@ -11,26 +11,27 @@
       <section class="hero">
         <div>
           <p class="eyebrow">FKM catalog</p>
-          <h1>Spreadsheet view with semantic search</h1>
+          <h1>Catalog view with semantic search</h1>
           <p class="lede">
-            Upload an Excel workbook, index each row into Postgres with
-            pgvector, then browse the original columns or search by meaning.
+            Reload the SharePoint catalog into Postgres, browse the configured
+            spreadsheet columns, or search by meaning.
           </p>
         </div>
         <div class="status-card">
           <div class="status-row">
-            <span>Uploaded workbook</span>
-            <code id="workbook-name">None</code>
+            <span>Reload status</span>
+            <code id="reload-status">Idle</code>
           </div>
           <div class="status-row">
-            <span>Indexed rows</span>
+            <span>Catalog rows</span>
             <strong id="indexed-count">0</strong>
           </div>
-          <label class="upload-field">
-            <span>Excel workbook (.xlsx)</span>
-            <input id="workbook-file-input" type="file" accept=".xlsx" />
-          </label>
-          <button id="upload-button" type="button">Upload and index</button>
+          <div class="status-row">
+            <span>Processed</span>
+            <code id="reload-progress">0 / 0</code>
+          </div>
+          <button id="reload-button" type="button">Reload from SharePoint</button>
+          <div id="reload-error" class="message error hidden"></div>
         </div>
       </section>
 
@@ -59,7 +60,7 @@
       <section class="panel">
         <div class="table-toolbar">
           <div>
-            <h2>Workbook rows</h2>
+            <h2>Catalog rows</h2>
             <p>Click a header to sort. Use the filter boxes below each header.</p>
           </div>
           <button id="reset-filters-button" type="button" class="ghost-button">

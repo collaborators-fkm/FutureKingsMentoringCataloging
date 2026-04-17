@@ -13,8 +13,8 @@ function in the codebase.
 
 from typing import Literal
 
-from app_types import ConfiguredDriveSource, PresentationColumn
-from generators import GeneratorRegistry
+from catalog_app.app_types import ConfiguredDriveSource, PresentationColumn
+from catalog_app.generation.generators import GeneratorRegistry
 
 EXCEL_CELL_CHARACTER_LIMIT = 32767
 SLIDE_BREAK = "\n\n--- SLIDE BREAK ---\n\n"

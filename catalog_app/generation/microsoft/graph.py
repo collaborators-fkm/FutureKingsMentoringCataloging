@@ -13,7 +13,7 @@ from requests.exceptions import HTTPError, RequestException
 from .types import GraphDriveItem, GraphHeaders
 
 if TYPE_CHECKING:
-    from app_types import DeltaCollectionResult, DriveSource
+    from catalog_app.app_types import DeltaCollectionResult, DriveSource
 
 logger = logging.getLogger(__name__)
 

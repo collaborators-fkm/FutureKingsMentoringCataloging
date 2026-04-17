@@ -3,7 +3,7 @@
 import psycopg
 from psycopg.rows import dict_row
 
-from vector_search_app.settings import get_database_url
+from catalog_app.settings import get_database_url
 
 
 def get_connection() -> psycopg.Connection:

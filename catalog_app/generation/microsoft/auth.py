@@ -4,8 +4,8 @@ import os
 
 import msal
 
-from app_types import DriveSource, ExcelSetup
-from configuration import DEFAULT_SOURCE, DRIVE_SOURCES
+from catalog_app.app_types import DriveSource, ExcelSetup
+from catalog_app.generation.configuration import DEFAULT_SOURCE, DRIVE_SOURCES
 
 from .graph import get_drive_id, get_drive_item_by_path, get_site_id
 from .types import GraphHeaders

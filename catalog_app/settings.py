@@ -1,4 +1,4 @@
-"""Configuration helpers for the vector search application."""
+"""Configuration helpers for the catalog application."""
 
 import os
 
@@ -16,7 +16,3 @@ def get_embedding_model() -> str:
 
 def get_embedding_dimension() -> int:
     return int(os.getenv("EMBEDDING_DIMENSION", "1536"))
-
-
-def get_auto_index_on_startup() -> bool:
-    return os.getenv("AUTO_INDEX_ON_STARTUP", "false").lower() == "true"

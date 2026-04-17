@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from app_types import PresentationColumn
-from generators import GeneratorRegistry
+from catalog_app.app_types import PresentationColumn
+from catalog_app.generation.generators import GeneratorRegistry
 from pydantic import BaseModel, Field, create_model
 
 

@@ -8,9 +8,9 @@ the column configuration readable while centralizing the implementation details.
 from functools import cache
 from typing import Any
 
-from microsoft.graph import download_pptx_file_content
-from microsoft.types import GraphDriveItem, GraphHeaders
-from presentation_reader import extract_slide_text_from_pptx_bytes
+from catalog_app.generation.microsoft.graph import download_pptx_file_content
+from catalog_app.generation.microsoft.types import GraphDriveItem, GraphHeaders
+from catalog_app.generation.presentation_reader import extract_slide_text_from_pptx_bytes
 
 
 def get_configured_source_path(item: GraphDriveItem) -> str:

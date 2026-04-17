@@ -7,7 +7,7 @@ This module is responsible for two things only:
 
 import os
 
-from configuration import SLIDE_BREAK
+from catalog_app.generation.configuration import SLIDE_BREAK
 from openai import OpenAI
 from pydantic import BaseModel
 
