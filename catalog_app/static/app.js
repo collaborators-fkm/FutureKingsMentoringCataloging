@@ -171,7 +171,7 @@ function renderSearchResults(items) {
   results.innerHTML = items
     .map((item) => {
       const summary = Object.entries(item.metadata || {})
-        .filter(([, value]) => value)
+        .filter(([key, value]) => value && !HIDDEN_COLUMNS.has(key))
         .slice(0, 6)
         .map(([key, value]) => `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}`)
         .join("<br />");
