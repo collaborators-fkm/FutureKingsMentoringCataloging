@@ -20,3 +20,5 @@ output/workshop_catalog_checkpoint.json
 output/workshop_catalog_delta_state.json
 
 **/.DS_Store
+
+catalog.sqlite3
