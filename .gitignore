@@ -9,6 +9,12 @@ wheels/
 
 .venv
 
+infra/.terraform/*
+*.tfvars
+*.tfstate
+*.tfstate.*
+*.terraform.tfstate.lock.info
+
 output/*.xlsx
 output/workshop_catalog_checkpoint.json
 output/workshop_catalog_delta_state.json
